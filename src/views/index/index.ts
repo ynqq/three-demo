@@ -111,12 +111,12 @@ export default class Index {
       }
     });
 
-    const textureLoader = new CubeTextureLoader().setPath(import.meta.env.VITE_SOME_IP);
+    const textureLoader = new CubeTextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/');
     const textureCube = textureLoader.load(['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg']);
     this.scene.background = textureCube;
     this.scene.environment = textureCube;
 
-    this.material = new MeshLambertMaterial({ map: new TextureLoader().setPath(import.meta.env.VITE_SOME_IP).load('1.png') });
+    this.material = new MeshLambertMaterial({ map: new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png') });
     this.initModel();
     // this.initGui();
   }
