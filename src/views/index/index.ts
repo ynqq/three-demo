@@ -52,6 +52,7 @@ export default class Index {
   clicked = false;
   gui!: GUI;
   selectModel: any;
+  moving = false;
   controls = {
     cameraX: 0,
   };
@@ -203,6 +204,10 @@ export default class Index {
     }
   }
   onClick(e: MouseEvent) {
+    if (this.moving) {
+      this.moving = false;
+      return;
+    }
     const ins = this.getSelectModels(e);
     if (ins.length) {
       const model = ins[0].object.parent;
@@ -246,6 +251,7 @@ export default class Index {
     return intersects || [];
   }
   onPointerMove(event: MouseEvent) {
+    this.moving = true;
     // const ins = this.getSelectModels(event);
   }
   animate() {
