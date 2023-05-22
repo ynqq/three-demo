@@ -135,8 +135,8 @@ export default class Index {
     };
   }
   initModel() {
-    const fbxLoader = new FBXLoader().setPath('http://localhost:4003/');
-    fbxLoader.load('/models/d1.fbx', obj => {
+    const fbxLoader = new FBXLoader().setPath(import.meta.env.VITE_SOME_IP);
+    fbxLoader.load('./models/d1.fbx', obj => {
       obj.scale.set(0.2, 0.2, 0.2);
       const { size } = this.getModelSize(obj);
       // const box = new BoxGeometry(size.x, size.y, size.z);

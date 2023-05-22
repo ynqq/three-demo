@@ -40,8 +40,8 @@
     const light = new AmbientLight(0xffffff);
     scene.add(light);
 
-    const fbxLoader = new FBXLoader().setPath('http://localhost:4003/');
-    fbxLoader.load('/models/d1.fbx', obj => {
+    const fbxLoader = new FBXLoader().setPath(import.meta.env.VITE_SOME_IP);
+    fbxLoader.load('./models/d1.fbx', obj => {
       obj.scale.set(0.3, 0.3, 0.3);
       obj.position.setY(-10);
       scene.add(obj);
