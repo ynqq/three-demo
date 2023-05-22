@@ -9,9 +9,9 @@ jobs:
         with:
           node-version: '16'
       - name: Install dependencies
-        run: pnpm install
+        run: npm install
       - name: Build
-        run: pnpm run build
+        run: npm run build
       - name: Deploy pages
         uses: crazy-max/ghaction-github-pages@v2
         with:
