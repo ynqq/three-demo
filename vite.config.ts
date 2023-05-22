@@ -5,7 +5,7 @@ import vue from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
 import Pages from "vite-plugin-pages";
 import Unocss from "unocss/vite";
-import ViteComponents, { AntDesignVueResolver } from "vite-plugin-components";
+// import ViteComponents, { AntDesignVueResolver } from "vite-plugin-components";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -31,13 +31,13 @@ export default defineConfig({
       replaceSquareBrackets: true,
     }),
     Unocss(),
-    ViteComponents({
-      customComponentResolvers: [
-        AntDesignVueResolver({
-          importStyle: false,
-        }),
-      ],
-    }),
+    // ViteComponents({
+    //   customComponentResolvers: [
+    //     AntDesignVueResolver({
+    //       importStyle: false,
+    //     }),
+    //   ],
+    // }),
   ],
   resolve: {
     alias: {
