@@ -104,6 +104,9 @@ export default class Index {
     this.scene.add(light);
 
     this.raycaster = new Raycaster();
+    document.addEventListener('mousedown', () => {
+      this.clicked = true;
+    });
     document.addEventListener('mousemove', this.onPointerMove.bind(this));
     document.addEventListener('click', this.onClick.bind(this));
     window.addEventListener('keydown', e => {
@@ -205,6 +208,7 @@ export default class Index {
   }
   onClick(e: MouseEvent) {
     if (this.moving) {
+      this.clicked = false;
       this.moving = false;
       return;
     }
@@ -229,6 +233,8 @@ export default class Index {
     new Tween.Tween(this.camera.position).to(x).duration(200).start();
   }
   resetCamera() {
+    this.clicked = false;
+    this.moving = false;
     handleHideModel();
     const v = new Vector3(0, 0, 0);
     this.camera.lookAt(v);
@@ -251,7 +257,9 @@ export default class Index {
     return intersects || [];
   }
   onPointerMove(event: MouseEvent) {
-    this.moving = true;
+    if (this.clicked) {
+      this.moving = true;
+    }
     // const ins = this.getSelectModels(event);
   }
   animate() {
