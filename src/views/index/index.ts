@@ -10,23 +10,31 @@ import {
   BoxGeometry,
   Color,
   CubeTextureLoader,
+  DirectionalLight,
+  DoubleSide,
   Material,
   Mesh,
   MeshBasicMaterial,
   MeshLambertMaterial,
   PerspectiveCamera,
+  PlaneGeometry,
   PointLight,
   Raycaster,
   RepeatWrapping,
   TextureLoader,
   Vector2,
   Vector3,
+  Group,
+  AxesHelper,
 } from 'three';
 import Tween from '@tweenjs/tween.js';
 import { handleHideModel, handleShowModel } from './components/util';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 
 export default class Index {
   rendererIns: Renderer | null = null;
@@ -59,6 +67,7 @@ export default class Index {
   outlinePass: any;
   selectedObjects: any[] = [];
   effect!: EffectComposer;
+  group!: Group;
 
   constructor(parentEl: HTMLDivElement) {
     this.initRender(parentEl);
@@ -90,13 +99,36 @@ export default class Index {
   }
   initCamera() {
     this.camera = new PerspectiveCamera(75, this.width / this.height, 1, 50000);
-    this.camera.position.set(30, 30, 0);
-    this.camera.lookAt(0, 0, 0);
+    this.camera.position.set(30, 12, 0);
+    this.camera.lookAt(0, 12, 0);
   }
   initControl() {
     this.controlIns = Controler.getInstance(this.camera!, this.renderer!.domElement);
     this.control = this.controlIns.getControl()!;
-    this.control.enableZoom = false;
+    this.control.enableDamping = true;
+    this.control.maxPolarAngle = 1.5;
+    this.control.minDistance = 30;
+    this.control.maxDistance = 50;
+    this.control.target = new Vector3(0, 12, 0);
+  }
+  paintWalls(width: number, depth: number, height: number, x: number, y: number, z: number, rx: number, ry: number, rz: number) {
+    new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('qiang.png', texture => {
+      texture.wrapS = texture.wrapT = RepeatWrapping;
+      texture.repeat.set(1, 1);
+      const material = new MeshLambertMaterial({
+        map: texture,
+        side: DoubleSide,
+      });
+      const gemotery = new BoxGeometry(width, depth, height);
+      const mesh = new Mesh(gemotery, material);
+      mesh.position.set(x, y, z);
+      mesh.rotation.x = Math.PI * rx;
+      mesh.rotation.y = Math.PI * ry;
+      if (rz) {
+        mesh.rotation.z = Math.PI * rz;
+      }
+      this.scene.add(mesh);
+    });
   }
   start() {
     // const help = new AxesHelper(1000);
@@ -106,9 +138,41 @@ export default class Index {
     const light = new AmbientLight(0xffffff);
     this.scene.add(light);
 
-    const pointeLight = new PointLight('#fff');
-    pointeLight.position.set(100, 100, 100);
-    this.scene.add(pointeLight);
+    // const pointeLight = new PointLight('#fff');
+    // pointeLight.position.set(100, 100, 100);
+    // this.scene.add(pointeLight);
+
+    const light2 = new DirectionalLight(0xddffdd, 0.2);
+    light2.position.set(1, 1, 1);
+    light2.castShadow = true;
+    light2.shadow.mapSize.width = 1024;
+    light2.shadow.mapSize.height = 1024;
+
+    const d = 10;
+
+    light2.shadow.camera.left = -d;
+    light2.shadow.camera.right = d;
+    light2.shadow.camera.top = d;
+    light2.shadow.camera.bottom = -d;
+    light2.shadow.camera.far = 1000;
+
+    this.scene.add(light2);
+
+    const width = 200,
+      height = 200;
+    new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('wood-floor.jpg', texture => {
+      texture.wrapS = texture.wrapT = RepeatWrapping;
+      texture.repeat.set(1, 1);
+      const material = new MeshLambertMaterial({ map: texture, side: DoubleSide });
+      const gemotery = new PlaneGeometry(width, height);
+      const mesh = new Mesh(gemotery, material);
+      mesh.position.y = 0;
+      mesh.rotation.x = Math.PI / 2;
+      this.scene.add(mesh);
+    });
+    this.paintWalls(width, 10, height, -width / 2, height / 2, 0, 0, 0, 1 / 2);
+    this.paintWalls(width, 10, height, 0, height / 2, -height / 2, 1 / 2, 0, 0);
+    this.paintWalls(width, 10, height, 0, height / 2, height / 2, 1 / 2, 0, 0);
 
     this.raycaster = new Raycaster();
     document.addEventListener('mousedown', () => {
@@ -138,12 +202,20 @@ export default class Index {
     this.outlinePass = new OutlinePass(new Vector2(this.width, this.height), this.scene, this.camera);
     this.outlinePass.edgeStrength = 3;
     this.outlinePass.visibleEdgeColor = new Color('#00baff');
+    this.outlinePass.downSampleRatio = 10;
+
     new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png', texture => {
       this.outlinePass.patternTexture = texture;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
     });
     this.effect.addPass(this.outlinePass);
+    const gammaPass = new ShaderPass(GammaCorrectionShader);
+    this.effect.addPass(gammaPass);
+
+    const effectFXAA = new ShaderPass(FXAAShader);
+    effectFXAA.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+    this.effect.addPass(effectFXAA);
   }
   initGui() {
     this.gui = new GUI();
@@ -162,6 +234,7 @@ export default class Index {
   initModel() {
     const fbxLoader = new FBXLoader().setPath(import.meta.env.VITE_SOME_IP);
     fbxLoader.load('./models/d1.fbx', obj => {
+      this.group = new Group();
       obj.scale.set(0.2, 0.2, 0.2);
       const { size } = this.getModelSize(obj);
       // const box = new BoxGeometry(size.x, size.y, size.z);
@@ -179,11 +252,12 @@ export default class Index {
         newObj2 = obj.clone();
       newObj.name = 'obj2';
       newObj2.name = 'obj3';
-      this.scene.add(obj);
+      this.group.add(obj);
       newObj.position.setZ(size.z);
-      this.scene.add(newObj);
+      this.group.add(newObj);
       newObj2.position.setZ(-size.z);
-      this.scene.add(newObj2);
+      this.group.add(newObj2);
+      this.scene.add(this.group);
     });
   }
   initBox(row: number, col: number) {
@@ -248,7 +322,7 @@ export default class Index {
     }
   }
   rotateCamera(x: Vector3) {
-    const v = new Vector3(0, 0, x.z);
+    const v = new Vector3(0, 12, x.z);
     this.camera.lookAt(v);
     this.control.target = v;
     new Tween.Tween(this.camera.position).to(x).duration(200).start();
@@ -257,13 +331,13 @@ export default class Index {
     this.clicked = false;
     this.moving = false;
     handleHideModel();
-    const v = new Vector3(0, 0, 0);
+    const v = new Vector3(0, 12, 0);
     this.camera.lookAt(v);
     this.control.target = v;
     new Tween.Tween(this.camera.position)
       .to({
         x: 30,
-        y: 30,
+        y: 12,
         z: 0,
       })
       .duration(200)
@@ -274,7 +348,7 @@ export default class Index {
     this.pointer.y = -(event.clientY / this.height) * 2 + 1;
 
     this.raycaster?.setFromCamera(this.pointer, this.camera!);
-    const intersects = this.raycaster!.intersectObjects(this.scene!.children, true);
+    const intersects = this.raycaster!.intersectObjects(this.group!.children, true);
     return intersects || [];
   }
   onPointerMove(event: MouseEvent) {
