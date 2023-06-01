@@ -7,6 +7,7 @@
   import { onMounted, ref } from 'vue';
   import Model from './components/model.vue';
   import { showModel } from './components/util';
+  import './components/test';
 
   import Index from './index';
 

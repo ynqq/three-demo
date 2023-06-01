@@ -1,36 +1,36 @@
 import Renderer, { type IRenderer } from '@/components/Three/Renderer';
 import Scener, { type IScener } from '@/components/Three/Scener';
-import OrthCameraer, { type IOrthCamera } from '@/components/Three/OrthCameraer';
+import OrthCameraer from '@/components/Three/OrthCameraer';
 import Controler, { type IOrbitControls } from '@/components/Three/Controler';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GUI } from 'dat.gui';
 import {
   AmbientLight,
-  AxesHelper,
   Box3,
   BoxGeometry,
+  Color,
   CubeTextureLoader,
-  EdgesGeometry,
-  LineBasicMaterial,
-  LineSegments,
   Material,
   Mesh,
   MeshBasicMaterial,
   MeshLambertMaterial,
-  MeshPhongMaterial,
   PerspectiveCamera,
+  PointLight,
   Raycaster,
+  RepeatWrapping,
   TextureLoader,
   Vector2,
   Vector3,
 } from 'three';
 import Tween from '@tweenjs/tween.js';
 import { handleHideModel, handleShowModel } from './components/util';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 
 export default class Index {
   rendererIns: Renderer | null = null;
-  renderer: IRenderer | null = null;
+  renderer!: IRenderer;
 
   sceneIns: Scener | null = null;
   scene!: IScener;
@@ -56,6 +56,9 @@ export default class Index {
   controls = {
     cameraX: 0,
   };
+  outlinePass: any;
+  selectedObjects: any[] = [];
+  effect!: EffectComposer;
 
   constructor(parentEl: HTMLDivElement) {
     this.initRender(parentEl);
@@ -103,6 +106,10 @@ export default class Index {
     const light = new AmbientLight(0xffffff);
     this.scene.add(light);
 
+    const pointeLight = new PointLight('#fff');
+    pointeLight.position.set(100, 100, 100);
+    this.scene.add(pointeLight);
+
     this.raycaster = new Raycaster();
     document.addEventListener('mousedown', () => {
       this.clicked = true;
@@ -123,6 +130,20 @@ export default class Index {
     this.material = new MeshLambertMaterial({ map: new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png') });
     this.initModel();
     // this.initGui();
+
+    this.effect = new EffectComposer(this.renderer);
+    const renderPass = new RenderPass(this.scene, this.camera);
+    this.effect.addPass(renderPass);
+
+    this.outlinePass = new OutlinePass(new Vector2(this.width, this.height), this.scene, this.camera);
+    this.outlinePass.edgeStrength = 3;
+    this.outlinePass.visibleEdgeColor = new Color('#00baff');
+    new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png', texture => {
+      this.outlinePass.patternTexture = texture;
+      texture.wrapS = RepeatWrapping;
+      texture.wrapT = RepeatWrapping;
+    });
+    this.effect.addPass(this.outlinePass);
   }
   initGui() {
     this.gui = new GUI();
@@ -260,11 +281,19 @@ export default class Index {
     if (this.clicked) {
       this.moving = true;
     }
-    // const ins = this.getSelectModels(event);
+    const ins = this.getSelectModels(event);
+    if (ins.length) {
+      const selectedObject = ins[0].object;
+      this.selectedObjects = [selectedObject];
+      this.outlinePass.selectedObjects = this.selectedObjects;
+    } else {
+      this.selectedObjects = [];
+      this.outlinePass.selectedObjects = this.selectedObjects;
+    }
   }
   animate() {
     Tween.update();
-    this.renderer!.render(this.scene, this.camera);
+    this.effect.render();
     this.control?.update();
     requestAnimationFrame(this.animate.bind(this));
   }
