@@ -26,6 +26,8 @@ import {
   Vector3,
   Group,
   AxesHelper,
+  DirectionalLightHelper,
+  PCFSoftShadowMap,
 } from 'three';
 import Tween from '@tweenjs/tween.js';
 import { handleHideModel, handleShowModel } from './components/util';
@@ -89,6 +91,7 @@ export default class Index {
     });
     this.renderer = this.rendererIns.getRender();
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
     const { width, height } = this.rendererIns.getSize();
     this.width = width;
     this.height = height;
@@ -131,19 +134,19 @@ export default class Index {
     });
   }
   start() {
-    // const help = new AxesHelper(1000);
-    // help.position.set(0, 0, 0);
-    // this.scene.add(help);
+    const help = new AxesHelper(1000);
+    help.position.set(0, 0, 0);
+    this.scene.add(help);
 
-    const light = new AmbientLight(0xffffff);
+    const light = new AmbientLight(0x333333);
     this.scene.add(light);
 
-    // const pointeLight = new PointLight('#fff');
-    // pointeLight.position.set(100, 100, 100);
-    // this.scene.add(pointeLight);
+    const pointeLight = new PointLight('#fff');
+    pointeLight.position.set(30, 40, -30);
+    this.scene.add(pointeLight);
 
-    const light2 = new DirectionalLight(0xddffdd, 0.2);
-    light2.position.set(1, 1, 1);
+    const light2 = new DirectionalLight(0x999999, 1);
+    light2.position.set(30, 40, -22);
     light2.castShadow = true;
     light2.shadow.mapSize.width = 1024;
     light2.shadow.mapSize.height = 1024;
@@ -154,6 +157,7 @@ export default class Index {
     light2.shadow.camera.right = d;
     light2.shadow.camera.top = d;
     light2.shadow.camera.bottom = -d;
+    light2.shadow.camera.near = 0.5;
     light2.shadow.camera.far = 1000;
 
     this.scene.add(light2);
@@ -234,18 +238,11 @@ export default class Index {
   initModel() {
     const fbxLoader = new FBXLoader().setPath(import.meta.env.VITE_SOME_IP);
     fbxLoader.load('./models/d1.fbx', obj => {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
       this.group = new Group();
       obj.scale.set(0.2, 0.2, 0.2);
       const { size } = this.getModelSize(obj);
-      // const box = new BoxGeometry(size.x, size.y, size.z);
-      // const material = new MeshBasicMaterial({
-      //   transparent: true,
-      //   color: '#00baff',
-      //   opacity: 0.5,
-      // });
-      // const mesh = new Mesh(box, material);
-      // mesh.position.set(center.x, center.y, center.z);
-      // this.scene.add(mesh);
       this.obj = obj;
       obj.name = 'obj';
       const newObj = obj.clone(),
@@ -308,6 +305,7 @@ export default class Index {
       return;
     }
     const ins = this.getSelectModels(e);
+
     if (ins.length) {
       const model = ins[0].object.parent;
       const config: Record<string, Vector3> = {
@@ -357,7 +355,7 @@ export default class Index {
     }
     const ins = this.getSelectModels(event);
     if (ins.length) {
-      const selectedObject = ins[0].object;
+      const selectedObject = ins[0].object.parent;
       this.selectedObjects = [selectedObject];
       this.outlinePass.selectedObjects = this.selectedObjects;
     } else {
@@ -368,6 +366,7 @@ export default class Index {
   animate() {
     Tween.update();
     this.effect.render();
+    // this.renderer.render(this.scene, this.camera);
     this.control?.update();
     requestAnimationFrame(this.animate.bind(this));
   }
