@@ -80,6 +80,7 @@ export default class Index {
       this.renderer.render(this.scene, this.camera);
       this.start();
       this.animate();
+      // this.handleKey();
     }
   }
 
@@ -133,10 +134,38 @@ export default class Index {
       this.scene.add(mesh);
     });
   }
+  handleKey() {
+    window.addEventListener('keyup', (e: KeyboardEvent) => {
+      this.handleKeyAction(e.key);
+    });
+  }
+  handleKeyAction(key: string) {
+    const config: Record<string, () => void> = {
+      w: this.handleToW,
+      a: this.handleToA,
+      s: this.handleToS,
+      d: this.handleToD,
+    };
+    if (config[key]) {
+      config[key].bind(this)();
+    }
+  }
+  handleToW() {
+    this.camera.position.setX(this.camera.position.x - 1);
+  }
+  handleToA() {
+    this.camera.position.setZ(this.camera.position.z + 1);
+  }
+  handleToS() {
+    this.camera.position.setX(this.camera.position.x + 1);
+  }
+  handleToD() {
+    this.camera.position.setZ(this.camera.position.z - 1);
+  }
   start() {
-    const help = new AxesHelper(1000);
-    help.position.set(0, 0, 0);
-    this.scene.add(help);
+    // const help = new AxesHelper(1000);
+    // help.position.set(0, 0, 0);
+    // this.scene.add(help);
 
     const light = new AmbientLight(0x333333);
     this.scene.add(light);
