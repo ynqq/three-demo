@@ -4,6 +4,8 @@ import OrthCameraer from '@/components/Three/OrthCameraer';
 import Controler, { type IOrbitControls } from '@/components/Three/Controler';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GUI } from 'dat.gui';
+import Stats from 'three/addons/libs/stats.module.js';
+
 import {
   AmbientLight,
   Box3,
@@ -28,6 +30,10 @@ import {
   AxesHelper,
   DirectionalLightHelper,
   PCFSoftShadowMap,
+  SphereGeometry,
+  SpotLight,
+  HemisphereLight,
+  PointLightHelper,
 } from 'three';
 import Tween from '@tweenjs/tween.js';
 import { handleHideModel, handleShowModel } from './components/util';
@@ -70,11 +76,14 @@ export default class Index {
   selectedObjects: any[] = [];
   effect!: EffectComposer;
   group!: Group;
+  stats!: Stats;
 
   constructor(parentEl: HTMLDivElement) {
     this.initRender(parentEl);
+    this.initStats(parentEl);
     this.initScene();
     this.initCamera();
+    this.initGui();
     if (this.renderer && this.scene && this.camera) {
       this.initControl();
       this.renderer.render(this.scene, this.camera);
@@ -109,11 +118,29 @@ export default class Index {
   initControl() {
     this.controlIns = Controler.getInstance(this.camera!, this.renderer!.domElement);
     this.control = this.controlIns.getControl()!;
+    const f3 = this.gui.addFolder('控制');
+    const params = {
+      control: true,
+    };
     this.control.enableDamping = true;
+    this.control.target = new Vector3(0, 12, 0);
     this.control.maxPolarAngle = 1.5;
     this.control.minDistance = 30;
     this.control.maxDistance = 50;
-    this.control.target = new Vector3(0, 12, 0);
+    f3.add(params, 'control').onChange(e => {
+      if (e) {
+        this.control.target = new Vector3(0, 12, 0);
+        this.control.maxPolarAngle = 1.5;
+        this.control.minDistance = 30;
+        this.control.maxDistance = 50;
+      } else {
+        this.control.target = new Vector3(0, 12, 0);
+        this.control.maxPolarAngle = Math.PI;
+        this.control.minDistance = 0;
+        this.control.maxDistance = Infinity;
+      }
+    });
+    f3.open();
   }
   paintWalls(width: number, depth: number, height: number, x: number, y: number, z: number, rx: number, ry: number, rz: number) {
     new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('qiang.png', texture => {
@@ -128,6 +155,7 @@ export default class Index {
       mesh.position.set(x, y, z);
       mesh.rotation.x = Math.PI * rx;
       mesh.rotation.y = Math.PI * ry;
+      mesh.castShadow = true;
       if (rz) {
         mesh.rotation.z = Math.PI * rz;
       }
@@ -170,27 +198,29 @@ export default class Index {
     const light = new AmbientLight(0x333333);
     this.scene.add(light);
 
-    const pointeLight = new PointLight('#fff');
-    pointeLight.position.set(30, 40, -30);
-    this.scene.add(pointeLight);
+    const dirLight = new PointLight(0xffffff, 1);
+    dirLight.position.set(100, 300, 130);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    const lh = new PointLightHelper(dirLight);
+    this.scene.add(lh);
 
-    const light2 = new DirectionalLight(0x999999, 1);
-    light2.position.set(30, 40, -22);
-    light2.castShadow = true;
-    light2.shadow.mapSize.width = 1024;
-    light2.shadow.mapSize.height = 1024;
+    this.scene.add(dirLight);
 
-    const d = 10;
-
-    light2.shadow.camera.left = -d;
-    light2.shadow.camera.right = d;
-    light2.shadow.camera.top = d;
-    light2.shadow.camera.bottom = -d;
-    light2.shadow.camera.near = 0.5;
-    light2.shadow.camera.far = 1000;
-
-    this.scene.add(light2);
-
+    const f2 = this.gui.addFolder('点光源');
+    const params = {
+      color: '#ffffff',
+    };
+    f2.addColor(params, 'color')
+      .onChange(e => {
+        dirLight.color.set(e);
+      })
+      .name('颜色');
+    f2.add(dirLight.position, 'x', -400, 400);
+    f2.add(dirLight.position, 'y', -400, 400);
+    f2.add(dirLight.position, 'z', -400, 400);
+    f2.open();
     const width = 200,
       height = 200;
     new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('wood-floor.jpg', texture => {
@@ -199,6 +229,7 @@ export default class Index {
       const material = new MeshLambertMaterial({ map: texture, side: DoubleSide });
       const gemotery = new PlaneGeometry(width, height);
       const mesh = new Mesh(gemotery, material);
+      mesh.receiveShadow = true;
       mesh.position.y = 0;
       mesh.rotation.x = Math.PI / 2;
       this.scene.add(mesh);
@@ -226,7 +257,6 @@ export default class Index {
 
     this.material = new MeshLambertMaterial({ map: new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png') });
     this.initModel();
-    // this.initGui();
 
     this.effect = new EffectComposer(this.renderer);
     const renderPass = new RenderPass(this.scene, this.camera);
@@ -249,11 +279,39 @@ export default class Index {
     const effectFXAA = new ShaderPass(FXAAShader);
     effectFXAA.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
     this.effect.addPass(effectFXAA);
+
+    const geo = new SphereGeometry(2);
+    const material = new MeshLambertMaterial({ color: new Color('#00baff') });
+    const mesh = new Mesh(geo, material);
+    mesh.position.set(-0, 20, 0);
+    mesh.castShadow = true;
+    this.scene.add(mesh);
+
+    new Tween.Tween(mesh.position)
+      .to({
+        x: mesh.position.x,
+        y: 30,
+        z: mesh.position.z,
+      })
+      .duration(500)
+      .easing(Tween.Easing.Linear.None)
+      .yoyo(true)
+      .repeat(Infinity)
+      .start();
+
+    const folder = this.gui.addFolder('球');
+    // folder.add(mesh.position, 'x', -100, 100);
+    // folder.add(mesh.position, 'y', -100, 100);
+    // folder.add(mesh.position, 'z', -100, 100);
+    folder.add(mesh, 'visible', true);
+    folder.open();
+  }
+  initStats(parentEl: HTMLDivElement) {
+    this.stats = new Stats();
+    parentEl.appendChild(this.stats.dom);
   }
   initGui() {
     this.gui = new GUI();
-    const cameraX = this.gui.add(this.controls, 'cameraX', 0, 303, 1);
-    cameraX.listen();
   }
   getModelSize(model: any) {
     const box = new Box3().setFromObject(model);
@@ -267,8 +325,12 @@ export default class Index {
   initModel() {
     const fbxLoader = new FBXLoader().setPath(import.meta.env.VITE_SOME_IP);
     fbxLoader.load('./models/d1.fbx', obj => {
-      obj.castShadow = true;
-      obj.receiveShadow = true;
+      obj.traverse(e => {
+        if ((e as any).isMesh) {
+          e.castShadow = true;
+          e.receiveShadow = true;
+        }
+      });
       this.group = new Group();
       obj.scale.set(0.2, 0.2, 0.2);
       const { size } = this.getModelSize(obj);
@@ -397,6 +459,7 @@ export default class Index {
     this.effect.render();
     // this.renderer.render(this.scene, this.camera);
     this.control?.update();
+    this.stats.update();
     requestAnimationFrame(this.animate.bind(this));
   }
 }

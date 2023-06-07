@@ -38,6 +38,7 @@ export default class Renderer {
   private init() {
     const { el, parentEl } = this.options;
     this.renderer = new WebGLRenderer({ canvas: el, alpha: true });
+    this.renderer.shadowMap.enabled = true;
     this.renderer.setPixelRatio(window.devicePixelRatio); // 设置像素比
     this.handleRenderSize();
     if (!el) {
