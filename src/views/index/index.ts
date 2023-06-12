@@ -35,6 +35,7 @@ import {
   HemisphereLight,
   PointLightHelper,
   LoadingManager,
+  MeshStandardMaterial,
 } from 'three';
 import Tween from '@tweenjs/tween.js';
 import { handleHideModel, handleShowModel } from './components/util';
@@ -63,7 +64,7 @@ export default class Index {
   raycaster: Raycaster | null = null;
   obj: any;
   pointer: any = new Vector2();
-  textLoader: TextureLoader | null = null;
+  textLoader!: TextureLoader;
   material: MeshLambertMaterial | null = null;
   old: any;
   clicked = false;
@@ -145,7 +146,7 @@ export default class Index {
     f3.open();
   }
   paintWalls(width: number, depth: number, height: number, x: number, y: number, z: number, rx: number, ry: number, rz: number) {
-    new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('qiang.png', texture => {
+    this.textLoader.load('qiang.png', texture => {
       texture.wrapS = texture.wrapT = RepeatWrapping;
       texture.repeat.set(1, 1);
       const material = new MeshLambertMaterial({
@@ -205,11 +206,13 @@ export default class Index {
       },
     };
     this.loadingManager = new LoadingManager(manager.onLoad, manager.onProgress, manager.onError);
+
+    this.textLoader = new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/');
     // const help = new AxesHelper(1000);
     // help.position.set(0, 0, 0);
     // this.scene.add(help);
 
-    const light = new AmbientLight(0x333333);
+    const light = new AmbientLight(0xffffff, 0.8);
     this.scene.add(light);
 
     const dirLight = new PointLight(0xffffff, 1);
@@ -237,17 +240,34 @@ export default class Index {
     f2.open();
     const width = 200,
       height = 200;
-    new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('wood-floor.jpg', texture => {
-      texture.wrapS = texture.wrapT = RepeatWrapping;
-      texture.repeat.set(1, 1);
-      const material = new MeshLambertMaterial({ map: texture, side: DoubleSide });
-      const gemotery = new PlaneGeometry(width, height);
-      const mesh = new Mesh(gemotery, material);
-      mesh.receiveShadow = true;
-      mesh.position.y = 0;
-      mesh.rotation.x = Math.PI / 2;
-      this.scene.add(mesh);
+    const texture = this.textLoader.load('floor/WoodFlooringMerbauBrickBondNatural001_COL_1K.jpg');
+    texture.wrapS = texture.wrapT = RepeatWrapping;
+    texture.repeat.set(1, 1);
+    const material2 = new MeshStandardMaterial({
+      map: texture,
+      side: DoubleSide,
+      // transparent: true,
+      roughnessMap: this.textLoader.load('floor/WoodFlooringMerbauBrickBondNatural001_GLOSS_1K.jpg'),
+      roughness: 0.7,
+      metalnessMap: this.textLoader.load('floor/WoodFlooringMerbauBrickBondNatural001_REFL_1K.jpg'),
+      metalness: 1,
+      displacementMap: this.textLoader.load('floor/WoodFlooringMerbauBrickBondNatural001_DISP_1K.jpg'),
+      displacementBias: 0.5,
+      displacementScale: 0.5,
+      bumpMap: this.textLoader.load('floor/WoodFlooringMerbauBrickBondNatural001_BUMP_1K.jpg'),
     });
+    f2.add(material2, 'displacementScale', 0, 1);
+    f2.add(material2, 'displacementBias', 0, 1);
+    f2.add(material2, 'metalness', 0, 1);
+    // f2.add(material2, 'normalScale', 0, 1);
+    f2.add(material2, 'roughness', 0, 1);
+    f2.add(material2, 'bumpScale', 0, 1);
+    const gemotery = new BoxGeometry(width, height, 1, 200, 200);
+    const mesh2 = new Mesh(gemotery, material2);
+    mesh2.receiveShadow = true;
+    mesh2.position.y = 0;
+    mesh2.rotation.x = Math.PI / 2;
+    this.scene.add(mesh2);
     this.paintWalls(width, 10, height, -width / 2, height / 2, 0, 0, 0, 1 / 2);
     this.paintWalls(width, 10, height, 0, height / 2, -height / 2, 1 / 2, 0, 0);
     this.paintWalls(width, 10, height, 0, height / 2, height / 2, 1 / 2, 0, 0);
@@ -270,7 +290,7 @@ export default class Index {
     this.scene.environment = textureCube;
 
     this.material = new MeshLambertMaterial({
-      map: new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png'),
+      map: this.textLoader.load('1.png'),
     });
     this.initModel();
 
@@ -283,7 +303,7 @@ export default class Index {
     this.outlinePass.visibleEdgeColor = new Color('#00baff');
     this.outlinePass.downSampleRatio = 10;
 
-    new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png', texture => {
+    this.textLoader.load('1.png', texture => {
       this.outlinePass.patternTexture = texture;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
