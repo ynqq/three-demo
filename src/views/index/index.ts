@@ -34,6 +34,7 @@ import {
   SpotLight,
   HemisphereLight,
   PointLightHelper,
+  LoadingManager,
 } from 'three';
 import Tween from '@tweenjs/tween.js';
 import { handleHideModel, handleShowModel } from './components/util';
@@ -77,6 +78,7 @@ export default class Index {
   effect!: EffectComposer;
   group!: Group;
   stats!: Stats;
+  loadingManager!: LoadingManager;
 
   constructor(parentEl: HTMLDivElement) {
     this.initRender(parentEl);
@@ -191,6 +193,18 @@ export default class Index {
     this.camera.position.setZ(this.camera.position.z - 1);
   }
   start() {
+    const manager = {
+      onError: (url: string) => {
+        alert(url + '加载失败');
+      },
+      onProgress(url: string, loaded: number, total: number) {
+        document.querySelector<HTMLDivElement>('.loading')!.innerText = '正在加载，请稍后...' + ((loaded / total) * 100).toFixed(0) + '%';
+      },
+      onLoad() {
+        document.querySelector<HTMLDivElement>('.loading')!.style.display = 'none';
+      },
+    };
+    this.loadingManager = new LoadingManager(manager.onLoad, manager.onProgress, manager.onError);
     // const help = new AxesHelper(1000);
     // help.position.set(0, 0, 0);
     // this.scene.add(help);
@@ -223,7 +237,7 @@ export default class Index {
     f2.open();
     const width = 200,
       height = 200;
-    new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('wood-floor.jpg', texture => {
+    new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('wood-floor.jpg', texture => {
       texture.wrapS = texture.wrapT = RepeatWrapping;
       texture.repeat.set(1, 1);
       const material = new MeshLambertMaterial({ map: texture, side: DoubleSide });
@@ -250,12 +264,14 @@ export default class Index {
       }
     });
 
-    const textureLoader = new CubeTextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/');
+    const textureLoader = new CubeTextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/');
     const textureCube = textureLoader.load(['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg']);
     this.scene.background = textureCube;
     this.scene.environment = textureCube;
 
-    this.material = new MeshLambertMaterial({ map: new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png') });
+    this.material = new MeshLambertMaterial({
+      map: new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png'),
+    });
     this.initModel();
 
     this.effect = new EffectComposer(this.renderer);
@@ -267,7 +283,7 @@ export default class Index {
     this.outlinePass.visibleEdgeColor = new Color('#00baff');
     this.outlinePass.downSampleRatio = 10;
 
-    new TextureLoader().setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png', texture => {
+    new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/').load('1.png', texture => {
       this.outlinePass.patternTexture = texture;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
@@ -323,7 +339,7 @@ export default class Index {
     };
   }
   initModel() {
-    const fbxLoader = new FBXLoader().setPath(import.meta.env.VITE_SOME_IP);
+    const fbxLoader = new FBXLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP);
     fbxLoader.load('./models/d1.fbx', obj => {
       obj.traverse(e => {
         if ((e as any).isMesh) {

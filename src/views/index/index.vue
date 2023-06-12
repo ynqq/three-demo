@@ -1,4 +1,5 @@
 <template>
+  <div class="loading"></div>
   <div ref="mainRef" class="main"></div>
   <Model v-if="showModel" />
 </template>
@@ -26,5 +27,20 @@
   .main {
     width: 100%;
     height: 100%;
+  }
+  .loading {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 9;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    color: #00baff;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(20px);
   }
 </style>
