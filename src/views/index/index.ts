@@ -36,6 +36,7 @@ import {
   PointLightHelper,
   LoadingManager,
   MeshStandardMaterial,
+  MeshPhongMaterial,
 } from 'three';
 import Tween from '@tweenjs/tween.js';
 import { handleHideModel, handleShowModel } from './components/util';
@@ -84,6 +85,20 @@ export default class Index {
   constructor(parentEl: HTMLDivElement) {
     this.initRender(parentEl);
     this.initStats(parentEl);
+    const manager = {
+      onError: (url: string) => {
+        alert(url + '加载失败');
+      },
+      onProgress(url: string, loaded: number, total: number) {
+        document.querySelector<HTMLDivElement>('.loading')!.innerText = '正在加载，请稍后...' + ((loaded / total) * 100).toFixed(0) + '%';
+      },
+      onLoad() {
+        document.querySelector<HTMLDivElement>('.loading')!.style.display = 'none';
+      },
+    };
+    this.loadingManager = new LoadingManager(manager.onLoad, manager.onProgress, manager.onError);
+
+    this.textLoader = new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/');
     this.initScene();
     this.initCamera();
     this.initGui();
@@ -194,20 +209,6 @@ export default class Index {
     this.camera.position.setZ(this.camera.position.z - 1);
   }
   start() {
-    const manager = {
-      onError: (url: string) => {
-        alert(url + '加载失败');
-      },
-      onProgress(url: string, loaded: number, total: number) {
-        document.querySelector<HTMLDivElement>('.loading')!.innerText = '正在加载，请稍后...' + ((loaded / total) * 100).toFixed(0) + '%';
-      },
-      onLoad() {
-        document.querySelector<HTMLDivElement>('.loading')!.style.display = 'none';
-      },
-    };
-    this.loadingManager = new LoadingManager(manager.onLoad, manager.onProgress, manager.onError);
-
-    this.textLoader = new TextureLoader(this.loadingManager).setPath(import.meta.env.VITE_SOME_IP + '/textures/');
     // const help = new AxesHelper(1000);
     // help.position.set(0, 0, 0);
     // this.scene.add(help);
@@ -246,7 +247,7 @@ export default class Index {
     const material2 = new MeshStandardMaterial({
       map: texture,
       side: DoubleSide,
-      // transparent: true,
+      transparent: true,
       roughnessMap: this.textLoader.load('floor/WoodFlooringMerbauBrickBondNatural001_GLOSS_1K.jpg'),
       roughness: 0.7,
       metalnessMap: this.textLoader.load('floor/WoodFlooringMerbauBrickBondNatural001_REFL_1K.jpg'),
@@ -316,14 +317,19 @@ export default class Index {
     effectFXAA.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
     this.effect.addPass(effectFXAA);
 
-    const geo = new SphereGeometry(2);
-    const material = new MeshLambertMaterial({ color: new Color('#00baff') });
+    const geo = new SphereGeometry(6);
+    const material = new MeshPhongMaterial({
+      color: '#00baff',
+      displacementBias: 0.5,
+      displacementScale: 0.5,
+    });
+    material.envMap = textureCube;
     const mesh = new Mesh(geo, material);
-    mesh.position.set(-0, 20, 0);
+    mesh.position.set(-30, 8, 0);
     mesh.castShadow = true;
     this.scene.add(mesh);
 
-    new Tween.Tween(mesh.position)
+    const t = new Tween.Tween(mesh.position)
       .to({
         x: mesh.position.x,
         y: 30,
@@ -332,14 +338,27 @@ export default class Index {
       .duration(500)
       .easing(Tween.Easing.Linear.None)
       .yoyo(true)
-      .repeat(Infinity)
-      .start();
+      .repeat(Infinity);
 
     const folder = this.gui.addFolder('球');
     // folder.add(mesh.position, 'x', -100, 100);
     // folder.add(mesh.position, 'y', -100, 100);
     // folder.add(mesh.position, 'z', -100, 100);
     folder.add(mesh, 'visible', true);
+    const param = {
+      ani: false,
+    };
+    folder.add(param, 'ani', false).onChange(() => {
+      if (t.isPlaying()) {
+        if (t.isPaused()) {
+          t.resume();
+        } else {
+          t.pause();
+        }
+      } else {
+        t.start();
+      }
+    });
     folder.open();
   }
   initStats(parentEl: HTMLDivElement) {
@@ -369,6 +388,7 @@ export default class Index {
       });
       this.group = new Group();
       obj.scale.set(0.2, 0.2, 0.2);
+      obj.position.setY(1.5);
       const { size } = this.getModelSize(obj);
       this.obj = obj;
       obj.name = 'obj';
