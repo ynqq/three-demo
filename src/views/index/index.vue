@@ -18,11 +18,15 @@
     Scene,
     TextureLoader,
     Vector2,
+    Vector3,
     WebGLRenderer,
   } from 'three';
   import { onMounted, shallowRef } from 'vue';
   import { useAddEventListener } from './hooks';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+  import { TTFLoader } from 'three/addons/loaders/TTFLoader.js';
+  import { Font } from 'three/addons/loaders/FontLoader.js';
+  import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
   const mainRef = shallowRef<HTMLDivElement>();
 
@@ -35,7 +39,10 @@
     textLoader!: TextureLoader,
     raycaster = new Raycaster(),
     group!: Group,
-    planeMesh!: Mesh;
+    planeMesh!: Mesh,
+    font!: Font,
+    isMoved = false,
+    isMouseDown = false;
 
   interface ModelInfoProps {
     position: [number, number, number];
@@ -48,7 +55,15 @@
       size: [10, 10, 10],
     },
     mesh2: {
-      position: [-40, 6, 0],
+      position: [-40, 6, -20],
+      size: [10, 10, 10],
+    },
+    mesh3: {
+      position: [-40, 6, 20],
+      size: [10, 10, 10],
+    },
+    mesh4: {
+      position: [-40, 6, -60],
       size: [10, 10, 10],
     },
   };
@@ -69,7 +84,7 @@
       scene.background = new Color('#000000');
 
       camera = new PerspectiveCamera(75, width / height, 1, 1000);
-      camera.position.set(0, 40, 100);
+      camera.position.set(0, 40, 40);
       camera.lookAt(0, 0, 0);
 
       const ambientLight = new AmbientLight(new Color(0xffffff));
@@ -94,6 +109,8 @@
 
       addEvent();
 
+      loadFont();
+
       animate();
     }
   }
@@ -107,7 +124,26 @@
     return intersects || [];
   }
 
-  function onPointerMove(e: MouseEvent) {
+  function onMouseMove() {
+    if (isMouseDown) {
+      isMoved = true;
+    }
+  }
+
+  function onMouseDown() {
+    isMouseDown = true;
+  }
+  function onMouseUp() {
+    isMouseDown = false;
+    setTimeout(() => {
+      isMoved = false;
+    }, 0);
+  }
+
+  function onClick(e: MouseEvent) {
+    if (isMoved) {
+      return;
+    }
     const ins = getSelectModels(e);
     if (ins.length) {
       handleMeshOver(ins[0].object.name);
@@ -126,10 +162,10 @@
       oldName = name;
       scene.remove(planeMesh);
       const { size, position } = info;
-      const planeGeo = new PlaneGeometry(size[0] * 2, size[1]);
+      const planeGeo = new PlaneGeometry(size[0] * 3, size[1] * 2);
       const material = new MeshBasicMaterial({ color: '#ff0000' });
       planeMesh = new Mesh(planeGeo, material);
-      planeMesh.position.set(position[0], position[1] + size[1], position[2]);
+      planeMesh.position.set(position[0], position[1] + size[1] * 2, position[2]);
       planeMesh.scale.set(0, 0, 0);
       planeMesh.rotation.set((-30 / 180) * Math.PI, 0, 0);
 
@@ -142,13 +178,94 @@
         .duration(200)
         .easing(Tween.Easing.Linear.None)
         .start();
-
+      const pos = {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z,
+      };
+      new Tween.Tween(pos)
+        .to({
+          x: position[0],
+          y: position[1] + 40,
+          z: position[2] + 40,
+        })
+        .duration(1000)
+        .easing(Tween.Easing.Circular.Out)
+        .onUpdate(() => {
+          const vet = new Vector3(pos.x, pos.y - 40, pos.z - 40);
+          camera.position.set(pos.x, pos.y, pos.z);
+          camera.lookAt(vet);
+          control.target = vet;
+          camera.updateMatrixWorld();
+        })
+        .start();
+      planeMesh.add(
+        createText(name, {
+          y: 6,
+          z: 0,
+          x: 0,
+        })
+      );
+      planeMesh.add(
+        createText('库存:20%', {
+          y: -2,
+          z: 0,
+          x: 0,
+        })
+      );
+      planeMesh.add(
+        createText('物品编号:1-2-3-4', {
+          y: 2,
+          z: 0,
+          x: 0,
+        })
+      );
       scene.add(planeMesh);
     }
   }
 
+  function loadFont() {
+    const loader = new TTFLoader().setPath(import.meta.env.VITE_SOME_IP + '/fonts/');
+    loader.load('demo.ttf', json => {
+      font = new Font(json);
+    });
+  }
+
+  function createText(
+    text: string,
+    position: {
+      x: number;
+      y: number;
+      z: number;
+    }
+  ) {
+    const textGeo = new TextGeometry(text, {
+      font: font,
+      size: 2,
+      height: 1,
+    });
+    textGeo.computeBoundingBox();
+    textGeo.computeVertexNormals();
+
+    const centerOffset = -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
+    const material = new MeshPhongMaterial({ color: 0x000000, flatShading: true });
+
+    const textMesh = new Mesh(textGeo, material);
+    textMesh.position.x = centerOffset;
+    textMesh.position.y = position.y;
+    textMesh.position.z = position.z;
+
+    textMesh.rotation.x = 0;
+    textMesh.rotation.y = Math.PI * 2;
+
+    return textMesh;
+  }
+
   function addEvent() {
-    document.addEventListener('mousemove', onPointerMove);
+    document.addEventListener('click', onClick);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mouseup', onMouseUp);
   }
 
   function loadModel(name: string, size: number[], position: number[]) {
