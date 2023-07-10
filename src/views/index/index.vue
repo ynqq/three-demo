@@ -6,14 +6,19 @@
   import Tween from '@tweenjs/tween.js';
   import {
     AmbientLight,
+    Box3,
     BoxGeometry,
+    BufferAttribute,
     Color,
     Group,
     Mesh,
     MeshBasicMaterial,
     MeshPhongMaterial,
+    PCFSoftShadowMap,
     PerspectiveCamera,
     PlaneGeometry,
+    PointLight,
+    PointLightHelper,
     Raycaster,
     Scene,
     TextureLoader,
@@ -27,6 +32,8 @@
   import { TTFLoader } from 'three/addons/loaders/TTFLoader.js';
   import { Font } from 'three/addons/loaders/FontLoader.js';
   import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+  import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+  import Stats from 'three/addons/libs/stats.module.js';
 
   const mainRef = shallowRef<HTMLDivElement>();
 
@@ -42,7 +49,8 @@
     planeMesh!: Mesh,
     font!: Font,
     isMoved = false,
-    isMouseDown = false;
+    isMouseDown = false,
+    stats!: Stats;
 
   interface ModelInfoProps {
     position: [number, number, number];
@@ -51,19 +59,23 @@
 
   const modalConfig: Record<string, ModelInfoProps> = {
     mesh1: {
-      position: [0, 6, 0],
+      position: [0, 1, 0],
       size: [10, 10, 10],
     },
     mesh2: {
-      position: [-40, 6, -20],
+      position: [-40, 1, -20],
       size: [10, 10, 10],
     },
     mesh3: {
-      position: [-40, 6, 20],
+      position: [-40, 1, 20],
       size: [10, 10, 10],
     },
     mesh4: {
-      position: [-40, 6, -60],
+      position: [-40, 1, -60],
+      size: [10, 10, 10],
+    },
+    mesh5: {
+      position: [60, 1, -60],
       size: [10, 10, 10],
     },
   };
@@ -78,17 +90,27 @@
       renderer = new WebGLRenderer({ alpha: true });
       renderer.setSize(width, height);
       renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = PCFSoftShadowMap;
       mainRef.value.appendChild(renderer.domElement);
+
+      stats = new Stats();
+      mainRef.value.appendChild(stats.dom);
 
       scene = new Scene();
       scene.background = new Color('#000000');
 
       camera = new PerspectiveCamera(75, width / height, 1, 1000);
-      camera.position.set(0, 40, 40);
+      camera.position.set(0, 50, 60);
       camera.lookAt(0, 0, 0);
 
-      const ambientLight = new AmbientLight(new Color(0xffffff));
+      const ambientLight = new AmbientLight(new Color(0x0f0f0f), 0.6);
       scene.add(ambientLight);
+      const dirLight = new PointLight(0xffffff, 1);
+      dirLight.castShadow = true;
+      dirLight.position.set(0, 50, 60);
+
+      scene.add(dirLight);
 
       // const axesHelper = new AxesHelper(100);
       // scene.add(axesHelper);
@@ -102,8 +124,7 @@
       group = new Group();
       for (let i in modalConfig) {
         const { size, position } = modalConfig[i];
-        const mesh1 = loadModel(i, size, position);
-        group.add(mesh1);
+        loadModel(i, size, position);
       }
       scene.add(group);
 
@@ -186,8 +207,8 @@
       new Tween.Tween(pos)
         .to({
           x: position[0],
-          y: position[1] + 40,
-          z: position[2] + 40,
+          y: position[1] + 50,
+          z: position[2] + 60,
         })
         .duration(1000)
         .easing(Tween.Easing.Circular.Out)
@@ -268,13 +289,41 @@
     document.addEventListener('mouseup', onMouseUp);
   }
 
+  function getModelSize(model: any, sizeList: number[]) {
+    const [x, y, z] = sizeList;
+    const box = new Box3().setFromObject(model);
+    const center = box.getCenter(new Vector3());
+    const size = box.getSize(new Vector3());
+    const maxDistance = Math.max(x / size.x, y / size.y, z / size.z);
+    return {
+      size,
+      center,
+      maxDistance,
+    };
+  }
   function loadModel(name: string, size: number[], position: number[]) {
-    const box = new BoxGeometry(...size);
-    const material = new MeshBasicMaterial({ color: '#00baff' });
-    const mesh = new Mesh(box, material);
-    mesh.position.set(position[0], position[1], position[2]);
-    mesh.name = name;
-    return mesh;
+    const loader = new FBXLoader().setPath(import.meta.env.VITE_SOME_IP + '/models/');
+    loader.load('tank/Gas Tank.fbx', model => {
+      model.name = name;
+      model.children[0].name = name;
+      model.traverse(mesh => {
+        if (mesh && mesh instanceof Mesh && mesh.isMesh) {
+          mesh.geometry.setAttribute('uv2', new BufferAttribute(mesh.geometry.attributes.uv.array, 2));
+          mesh.material = new MeshPhongMaterial({
+            map: textLoader.load('../models/tank/Gas Tank_Base_Color.png'),
+            aoMap: textLoader.load('../models/tank/Gas Tank_Mixed_AO.png'),
+            normalMap: textLoader.load('../models/tank/Gas Tank_Normal_DirectX.png'),
+            emissiveMap: textLoader.load('../models/tank/Gas Tank_Height.png'),
+            alphaMap: textLoader.load('../models/tank/Gas Tank_Metallic.png'),
+          });
+          mesh.castShadow = true;
+        }
+      });
+      model.position.set(position[0], position[1], position[2]);
+      group.add(model);
+      const { maxDistance } = getModelSize(model, size);
+      model.scale.set(maxDistance, maxDistance, maxDistance);
+    });
   }
 
   function loadWorrdFloor() {
@@ -285,6 +334,7 @@
     const mesh = new Mesh(gemotery, material);
     mesh.position.y = 0;
     mesh.rotation.x = Math.PI / 2;
+    mesh.receiveShadow = true;
     scene.add(mesh);
   }
 
@@ -292,6 +342,7 @@
     Tween.update();
     renderer.render(scene, camera);
     control.update();
+    stats.update();
     requestAnimationFrame(animate);
   }
 
