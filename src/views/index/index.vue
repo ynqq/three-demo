@@ -13,7 +13,9 @@
     Group,
     Mesh,
     MeshBasicMaterial,
+    MeshLambertMaterial,
     MeshPhongMaterial,
+    MeshStandardMaterial,
     PCFSoftShadowMap,
     PerspectiveCamera,
     PlaneGeometry,
@@ -59,23 +61,23 @@
 
   const modalConfig: Record<string, ModelInfoProps> = {
     mesh1: {
-      position: [0, 1, 0],
+      position: [0, 0.5, 0],
       size: [10, 10, 10],
     },
     mesh2: {
-      position: [-40, 1, -20],
+      position: [-40, 0.5, -20],
       size: [10, 10, 10],
     },
     mesh3: {
-      position: [-40, 1, 20],
+      position: [-40, 0.5, 20],
       size: [10, 10, 10],
     },
     mesh4: {
-      position: [-40, 1, -60],
+      position: [-40, 0.5, -60],
       size: [10, 10, 10],
     },
     mesh5: {
-      position: [60, 1, -60],
+      position: [60, 0.5, -60],
       size: [10, 10, 10],
     },
   };
@@ -111,6 +113,9 @@
       dirLight.position.set(0, 50, 60);
 
       scene.add(dirLight);
+
+      const lightHelper = new PointLightHelper(dirLight);
+      scene.add(lightHelper);
 
       // const axesHelper = new AxesHelper(100);
       // scene.add(axesHelper);
@@ -309,12 +314,16 @@
       model.traverse(mesh => {
         if (mesh && mesh instanceof Mesh && mesh.isMesh) {
           mesh.geometry.setAttribute('uv2', new BufferAttribute(mesh.geometry.attributes.uv.array, 2));
-          mesh.material = new MeshPhongMaterial({
+          mesh.material = new MeshStandardMaterial({
             map: textLoader.load('../models/tank/Gas Tank_Base_Color.png'),
-            aoMap: textLoader.load('../models/tank/Gas Tank_Mixed_AO.png'),
+            emissiveMap: textLoader.load('../models/tank/Gas Tank_Mixed_AO.png'),
             normalMap: textLoader.load('../models/tank/Gas Tank_Normal_DirectX.png'),
-            emissiveMap: textLoader.load('../models/tank/Gas Tank_Height.png'),
-            alphaMap: textLoader.load('../models/tank/Gas Tank_Metallic.png'),
+            bumpMap: textLoader.load('../models/tank/Gas Tank_Height.png'),
+            bumpScale: 1,
+            metalnessMap: textLoader.load('../models/tank/Gas Tank_Metallic.png'),
+            metalness: 1,
+            roughnessMap: textLoader.load('../models/tank/Gas Tank_Metallic.png'),
+            roughness: 0.5,
           });
           mesh.castShadow = true;
         }
