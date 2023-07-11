@@ -9,6 +9,7 @@
     Box3,
     BoxGeometry,
     BufferAttribute,
+    Clock,
     Color,
     Group,
     Mesh,
@@ -21,8 +22,10 @@
     PlaneGeometry,
     PointLight,
     PointLightHelper,
+    RawShaderMaterial,
     Raycaster,
     Scene,
+    ShaderMaterial,
     TextureLoader,
     Vector2,
     Vector3,
@@ -52,7 +55,8 @@
     font!: Font,
     isMoved = false,
     isMouseDown = false,
-    stats!: Stats;
+    stats!: Stats,
+    clock!: Clock;
 
   interface ModelInfoProps {
     position: [number, number, number];
@@ -105,6 +109,8 @@
       camera = new PerspectiveCamera(75, width / height, 1, 1000);
       camera.position.set(0, 50, 60);
       camera.lookAt(0, 0, 0);
+
+      clock = new Clock();
 
       const ambientLight = new AmbientLight(new Color(0x0f0f0f), 0.6);
       scene.add(ambientLight);
@@ -257,6 +263,35 @@
     });
   }
 
+  const textMaterial = new RawShaderMaterial({
+    vertexShader: `
+        uniform mat4 projectionMatrix;
+        uniform mat4 viewMatrix;
+        uniform mat4 modelMatrix;
+        uniform float uTime;
+
+        attribute vec3 position;
+
+        varying float vElevation;
+
+        void main(){
+          gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+          vElevation += sin(gl_Position.x - uTime);
+        }
+      `,
+    fragmentShader: `
+        precision mediump float;
+        varying float vElevation;
+
+        void main(){
+          gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0) * vElevation;
+        }
+      `,
+    wireframe: false,
+    uniforms: {
+      uTime: { value: 0 },
+    },
+  });
   function createText(
     text: string,
     position: {
@@ -274,9 +309,9 @@
     textGeo.computeVertexNormals();
 
     const centerOffset = -0.5 * (textGeo.boundingBox!.max.x - textGeo.boundingBox!.min.x);
-    const material = new MeshPhongMaterial({ color: 0x000000, flatShading: true });
+    // const material = new MeshPhongMaterial({ color: 0x000000, flatShading: true });
 
-    const textMesh = new Mesh(textGeo, material);
+    const textMesh = new Mesh(textGeo, textMaterial);
     textMesh.position.x = centerOffset;
     textMesh.position.y = position.y;
     textMesh.position.z = position.z;
@@ -318,8 +353,8 @@
             map: textLoader.load('../models/tank/Gas Tank_Base_Color.png'),
             emissiveMap: textLoader.load('../models/tank/Gas Tank_Mixed_AO.png'),
             normalMap: textLoader.load('../models/tank/Gas Tank_Normal_DirectX.png'),
-            bumpMap: textLoader.load('../models/tank/Gas Tank_Height.png'),
-            bumpScale: 1,
+            // displacementMap: textLoader.load('../models/tank/Gas Tank_Height.png'),
+            // displacementScale: 0.1,
             metalnessMap: textLoader.load('../models/tank/Gas Tank_Metallic.png'),
             metalness: 1,
             roughnessMap: textLoader.load('../models/tank/Gas Tank_Metallic.png'),
@@ -352,6 +387,7 @@
     renderer.render(scene, camera);
     control.update();
     stats.update();
+    textMaterial.uniforms.uTime.value = clock.getElapsedTime() * 10;
     requestAnimationFrame(animate);
   }
 
