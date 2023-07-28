@@ -283,8 +283,12 @@
         precision mediump float;
         varying float vElevation;
 
+        float random(float n){
+          return fract(sin(n) * 43758.53644);
+        }
+
         void main(){
-          gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0) * vElevation;
+          gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0) * vElevation;
         }
       `,
     wireframe: false,
