@@ -9,11 +9,14 @@
     <circle :cx="size / 2" :cy="size / 2" :r="(size - 40) / 2" stroke="transparent" stroke-width="2" fill="#fff" />
     <g>
       <path
+        draggable
         class="pathItem"
         d="M 200 200 L 380 200 A 180 180 0 0 1 200 380 "
         stroke="#00baff"
         fill="transparent"
         stroke-width="1"
+        @dragstart="handleStart"
+        @drop="handleDrop"
         @click="handleClick(1)"
       ></path>
       <path
@@ -43,7 +46,7 @@
     </g>
     <g>
       <text x="20" y="20">A区</text>
-      <text :x="380 - 30" y="20">B区</text>
+      <text :x="380 - 30" y="20">B区 {{ num }}</text>
       <text x="20" :y="380 - 30">C区</text>
       <text :x="380 - 30" :y="380 - 30">D区</text>
     </g>
@@ -58,18 +61,58 @@
       <line stroke-width="2" stroke="#00baff" x1="176" y1="248" x2="224" y2="248" />
       <line stroke-width="2" stroke="#00baff" x1="176" y1="252" x2="224" y2="252" />
     </g>
+    <svg x="80.41669750802298" y="74">
+      <foreignObject width="80" height="50" class="text-center cursor-pointer text-xs">
+        <div draggable="true" style="background-color: red" @dragstart="drag" @drop="drop" @dragover="allowDrop">
+          <p class="shelf-code" title="SS00000314">SS00000314</p>
+          <p title="1 * 10">1*10</p>
+        </div>
+      </foreignObject>
+    </svg>
   </svg>
 </template>
 
 <script setup lang="ts">
+  import { ref } from 'vue';
   import imgSrc from '../../../assets/4.png';
   // A rx,ry ratation_deg,flag1,flag2,x2,y2
   defineProps<{
     size: number;
   }>();
 
+  const num = ref(1);
+  setInterval(() => {
+    num.value++;
+  }, 1000);
+
   function handleClick(val) {
     console.log(val);
+  }
+  function handleDrop(e: DragEvent) {
+    console.log(e);
+
+    e.preventDefault();
+  }
+  function handleStart(e) {
+    console.log(e);
+  }
+
+  function allowDrop(ev) {
+    ev.preventDefault();
+  }
+
+  function drag(ev) {
+    console.log(ev);
+
+    ev.dataTransfer.setData('text', ev.target.id);
+  }
+
+  function drop(ev) {
+    console.log(ev);
+
+    ev.preventDefault();
+    let data = ev.dataTransfer.getData('text');
+    ev.target.appendChild(document.getElementById(data));
   }
 </script>
 

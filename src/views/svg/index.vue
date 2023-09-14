@@ -2,6 +2,7 @@
   <div class="container">
     <div class="box">
       <Com :size="400" />
+      <Com :size="400" />
     </div>
   </div>
 </template>
