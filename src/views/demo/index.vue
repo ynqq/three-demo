@@ -27,6 +27,7 @@
 
   import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
   import { CSS3DRenderer } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+  import { GUI } from 'dat.gui';
   onMounted(() => {
     let width = window.innerWidth,
       height = window.innerHeight;
@@ -182,9 +183,16 @@
       }
     });
 
+    const config = {
+      moveDistance: 0.2,
+      rotationSpeed: 0.02,
+    };
+
     const cameraDistance = 20;
-    const moveDistance = 0.3;
-    const rotationSpeed = 0.02;
+
+    const gui = new GUI();
+    gui.add(config, 'moveDistance').name('运动速度');
+    gui.add(config, 'rotationSpeed').name('旋转速度');
 
     function handlePersonMove() {
       if (person) {
@@ -195,22 +203,30 @@
         if (keyAction['w']) {
           const forward = new Vector3(0, 0, -1);
           forward.applyQuaternion(person.quaternion);
-          person.position.add(forward.multiplyScalar(moveDistance));
-          // person.position.z -= moveDistance;
+          person.position.add(forward.multiplyScalar(config.moveDistance));
+          // person.position.z -= config.moveDistance;
+          if (!keyAction['a'] && !keyAction['d']) {
+            mixer.clipAction(actions[0]).stop();
+            mixer.clipAction(actions[1]).play();
+          }
         }
         if (keyAction['s']) {
           const forward = new Vector3(0, 0, 1);
           forward.applyQuaternion(person.quaternion);
-          person.position.add(forward.multiplyScalar(moveDistance));
-          // person.position.z += moveDistance;
+          person.position.add(forward.multiplyScalar(config.moveDistance));
+          if (!keyAction['a'] && !keyAction['d']) {
+            mixer.clipAction(actions[0]).stop();
+            mixer.clipAction(actions[1]).play();
+          }
+          // person.position.z += config.moveDistance;
         }
         if (keyAction['a']) {
-          // person.position.x -= moveDistance;
-          person.rotation.y += rotationSpeed;
+          // person.position.x -= config.moveDistance;
+          person.rotation.y += config.rotationSpeed;
         }
         if (keyAction['d']) {
-          // person.position.x += moveDistance;
-          person.rotation.y -= rotationSpeed;
+          // person.position.x += config.moveDistance;
+          person.rotation.y -= config.rotationSpeed;
         }
       }
     }
